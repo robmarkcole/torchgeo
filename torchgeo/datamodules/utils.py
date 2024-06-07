@@ -68,7 +68,7 @@ class AugPipe(Module):
                 batch['masks'][bs] = batch_dict['masks']
 
         # Stack images
-        batch['image'] = rearrange(batch['image'], 'b () c h w -> b c h w')
+        batch['image'] = rearrange(batch['image'], 'b p c h w -> (b p) c h w')
 
         return batch
 
