@@ -105,7 +105,9 @@ class AugmentationSequential(Module):
         if 'mask' in batch and batch['mask'].shape[1] == 1:
             batch['mask'] = rearrange(batch['mask'], 'b () h w -> b h w')
         if 'masks' in batch and batch['masks'].ndim == 4:
-            batch['masks'] = rearrange(batch['masks'], '() c h w -> c h w')
+            # batch['masks'] = rearrange(batch['masks'], '() c h w -> c h w')
+            batch['masks'] = rearrange(batch['masks'], 'b c h w -> (b c) h w')
+            # raise ValueError("masks should not have a channel dimension")
 
         return batch
 
