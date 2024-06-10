@@ -55,8 +55,8 @@ class AugPipe(Module):
                 'boxes': batch['boxes'][bs],
             }
 
-            if 'masks' in batch:
-                batch_dict['masks'] = batch['masks'][bs]
+            if 'mask' in batch:
+                batch_dict['mask'] = batch['mask'][bs]
 
             batch_dict = self.augs(batch_dict)
 
@@ -64,8 +64,8 @@ class AugPipe(Module):
             batch['labels'][bs] = batch_dict['labels']
             batch['boxes'][bs] = batch_dict['boxes']
 
-            if 'masks' in batch:
-                batch['masks'][bs] = batch_dict['masks']
+            if 'mask' in batch:
+                batch['mask'][bs] = batch_dict['mask']
 
         # Stack images
         batch['image'] = rearrange(batch['image'], 'b () c h w -> b c h w')
@@ -94,8 +94,8 @@ def collate_fn_detection(batch: list[dict[str, Tensor]]) -> dict[str, Any]:
             torch.tensor([1] * len(sample['boxes'])) for sample in batch
         ]
 
-    if 'masks' in batch[0]:
-        output['masks'] = [sample['masks'] for sample in batch]
+    if 'mask' in batch[0]:
+        output['mask'] = [sample['mask'] for sample in batch]
     return output
 
 
