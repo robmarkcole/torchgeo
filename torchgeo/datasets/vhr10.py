@@ -102,7 +102,7 @@ class ConvertCocoAnnotations:
         target = {'boxes': boxes, 'labels': classes, 'image_id': image_id}
         if masks.nelement() > 0:
             masks = masks[keep]
-            target['masks'] = masks
+            target['mask'] = masks
 
         # for conversion to coco api
         area = torch.tensor([obj['area'] for obj in anno])
@@ -251,7 +251,7 @@ class VHR10(NonGeoDataset):
             sample = self.coco_convert(sample)
             sample['labels'] = sample['label']['labels']
             sample['boxes'] = sample['label']['boxes']
-            sample['masks'] = sample['label']['masks']
+            sample['mask'] = sample['label']['mask']
             del sample['label']
 
         if self.transforms is not None:
@@ -373,7 +373,7 @@ class VHR10(NonGeoDataset):
             sample: a sample returned by :meth:`__getitem__`
             suptitle: optional string to use as a suptitle
             show_titles: flag indicating whether to show titles above each panel
-            show_feats: optional string to pick features to be shown: boxes, masks, both
+            show_feats: optional string to pick features to be shown: boxes, mask, both
             box_alpha: alpha value of box
             mask_alpha: alpha value of mask
 
@@ -382,11 +382,11 @@ class VHR10(NonGeoDataset):
 
         Raises:
             AssertionError: if ``show_feats`` argument is invalid
-            DependencyNotFoundError: If plotting masks and scikit-image is not installed.
+            DependencyNotFoundError: If plotting the mask and scikit-image is not installed.
 
         .. versionadded:: 0.4
         """
-        assert show_feats in {'boxes', 'masks', 'both'}
+        assert show_feats in {'boxes', 'mask', 'both'}
         image = percentile_normalization(sample['image'].permute(1, 2, 0).numpy())
 
         if self.split == 'negative':
@@ -404,8 +404,8 @@ class VHR10(NonGeoDataset):
         boxes = sample['boxes'].cpu().numpy()
         labels = sample['labels'].cpu().numpy()
 
-        if 'masks' in sample:
-            masks = [mask.squeeze().cpu().numpy() for mask in sample['masks']]
+        if 'mask' in sample:
+            masks = [mask.squeeze().cpu().numpy() for mask in sample['mask']]
 
         n_gt = len(boxes)
 
@@ -460,7 +460,7 @@ class VHR10(NonGeoDataset):
             )
 
             # Add masks
-            if show_feats in {'masks', 'both'} and 'masks' in sample:
+            if show_feats in {'mask', 'both'} and 'mask' in sample:
                 mask = masks[i]
                 contours = skimage.measure.find_contours(mask, 0.5)
                 for verts in contours:
