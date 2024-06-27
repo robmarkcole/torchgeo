@@ -22,11 +22,16 @@ from torchmetrics.classification import (
     MultilabelFBetaScore,
 )
 from torchvision.models._api import WeightsEnum
+from torch.utils.tensorboard import SummaryWriter
 
 from ..datasets import RGBBandsMissingError, unbind_samples
 from ..models import get_weight
 from . import utils
 from .base import BaseTask
+import tempfile
+
+import wandb
+import mlflow
 
 
 class ClassificationTask(BaseTask):
@@ -187,6 +192,19 @@ class ClassificationTask(BaseTask):
 
         return loss
 
+    def log_figure(self, fig, label, step):
+        logger = self.logger.experiment
+        if isinstance(logger, SummaryWriter):  # Checking if TensorBoard is used
+            logger.add_figure(label, fig, global_step=step)
+        elif 'wandb' in str(type(self.logger)):
+            wandb.log({label: wandb.Image(fig)})
+        elif 'MLFlowLogger' in str(type(self.logger)):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmpfile:
+                temp_file_path = tmpfile.name
+            fig.savefig(temp_file_path)
+            mlflow.log_artifact(temp_file_path)
+        plt.close(fig)
+
     def validation_step(
         self, batch: Any, batch_idx: int, dataloader_idx: int = 0
     ) -> None:
@@ -212,7 +230,6 @@ class ClassificationTask(BaseTask):
             and hasattr(self.trainer.datamodule, 'plot')
             and self.logger
             and hasattr(self.logger, 'experiment')
-            and hasattr(self.logger.experiment, 'add_figure')
         ):
             datamodule = self.trainer.datamodule
             batch['prediction'] = y_hat.argmax(dim=-1)
@@ -227,11 +244,7 @@ class ClassificationTask(BaseTask):
                 pass
 
             if fig:
-                summary_writer = self.logger.experiment
-                summary_writer.add_figure(
-                    f'image/{batch_idx}', fig, global_step=self.global_step
-                )
-                plt.close()
+                self.log_figure(fig, f'image/{batch_idx}', self.global_step)
 
     def test_step(self, batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
         """Compute the test loss and additional metrics.
