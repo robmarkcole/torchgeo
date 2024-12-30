@@ -436,6 +436,7 @@ class BigEarthNet(NonGeoDataset):
 
         target = torch.zeros(self.num_classes, dtype=torch.long)
         target[indices] = 1
+        target = target.float()
         return target
 
     def _verify(self) -> None:
