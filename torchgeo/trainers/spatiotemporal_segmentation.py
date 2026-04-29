@@ -8,7 +8,7 @@ from typing import Any, Literal, cast
 
 from torch import Tensor
 
-from ..models import ConvLSTM
+from ..models import ConvLSTM, OlmoEarthV1_Weights, olmoearth_v1_temporal_segmentation
 from .base import BaseTask
 from .mixins import ClassificationMixin
 
@@ -21,7 +21,8 @@ class SpatioTemporalSegmentationTask(ClassificationMixin, BaseTask):
 
     def __init__(
         self,
-        model: Literal['convlstm'] = 'convlstm',
+        model: Literal['convlstm', 'olmoearth_v1'] = 'convlstm',
+        weights: OlmoEarthV1_Weights | str | None = None,
         in_channels: int = 3,
         task: Literal['binary', 'multiclass', 'multilabel'] = 'multiclass',
         num_classes: int | None = None,
@@ -33,12 +34,17 @@ class SpatioTemporalSegmentationTask(ClassificationMixin, BaseTask):
         ignore_index: int | None = None,
         lr: float = 1e-3,
         patience: int = 10,
+        freeze_backbone: bool = False,
         **kwargs: Any,
     ) -> None:
         """Initialize a new SpatioTemporalSegmentationTask instance.
 
         Args:
-            model: Spatiotemporal model name. Supported value is ``'convlstm'``.
+            model: Spatiotemporal model name. Supported values are
+                ``'convlstm'`` and ``'olmoearth_v1'``.
+            weights: Pre-trained weights for ``model='olmoearth_v1'``. Either an
+                ``OlmoEarthV1_Weights`` enum value, its string representation, or
+                ``None`` for random initialization.
             in_channels: Number of channels per timestep for inputs of shape
                 ``(B, T, C, H, W)``.
             task: One of 'binary', 'multiclass', or 'multilabel'.
@@ -54,10 +60,16 @@ class SpatioTemporalSegmentationTask(ClassificationMixin, BaseTask):
                 metrics.
             lr: Learning rate for optimizer.
             patience: Patience for learning rate scheduler.
+            freeze_backbone: Freeze the OlmoEarth backbone when
+                ``model='olmoearth_v1'``.
             **kwargs: Additional model-specific kwargs. For ``model='convlstm'``,
-                kwargs are passed to ``ConvLSTM``.
+                kwargs are passed to ``ConvLSTM``. For ``model='olmoearth_v1'``,
+                kwargs are passed to ``olmoearth_v1`` except ``patch_size``,
+                ``decoder_type``, ``decoder_channels``, and ``head_kernel_size``,
+                which configure the segmentation head.
 
         """
+        self.weights = weights
         super().__init__()
 
     def forward(self, x: Tensor, lengths: Tensor | None = None) -> Tensor:
@@ -104,6 +116,10 @@ class SpatioTemporalSegmentationTask(ClassificationMixin, BaseTask):
                     return_all_layers=return_all_layers,
                     num_classes=num_classes,
                     head_kernel_size=head_kernel_size,
+                )
+            case 'olmoearth_v1':
+                self.model = olmoearth_v1_temporal_segmentation(
+                    weights=self.weights, **self.hparams
                 )
 
     def _shared_step(self, batch: Any, stage: str) -> Tensor:
